@@ -1,2 +1,5 @@
 <Solution>
+  <Project Path="InfraSweep.Analysis/InfraSweep.Analysis.csproj" />
+  <Project Path="InfraSweep.App/InfraSweep.App.csproj" />
+  <Project Path="InfraSweep.Discovery/InfraSweep.Discovery.csproj" />
 </Solution>
