@@ -58,7 +58,7 @@ public class InfraSweepDiscoveryTests
         foreach (SsdpDevice device in devices)
             Console.WriteLine(device.FriendlyName + " | " + device.Manufacturer);
         
-        Console.WriteLine(devices.Count());
+        Console.WriteLine(devices.Count);
 
         Console.WriteLine(stopwatch.ElapsedMilliseconds);
     }
@@ -69,14 +69,14 @@ public class InfraSweepDiscoveryTests
         Stopwatch stopwatch = new Stopwatch();
         stopwatch.Start();
 
-        IReadOnlyList<IZeroconfHost> devices = await MdnsProbe.DiscoverDevices();
+        List<IZeroconfHost> devices = await MdnsProbe.DiscoverDevices();
 
         stopwatch.Stop();
 
         foreach (IZeroconfHost device in devices)
             Console.WriteLine(device.IPAddress + " | " + device.Services.First().Value.Port + " | " + device.Services.First().Value.ServiceName);
         
-        Console.WriteLine(devices.Count());
+        Console.WriteLine(devices.Count);
 
         Console.WriteLine(stopwatch.ElapsedMilliseconds);
     }
@@ -87,11 +87,11 @@ public class InfraSweepDiscoveryTests
         Stopwatch stopwatch = new Stopwatch();
         stopwatch.Start();
 
-        HttpProbeResult result = await HttpProbe.ProbeHTTPService(IPAddress.Parse(""), 80);
+        string? serverHeader = await HttpProbe.ProbeServerHeader(IPAddress.Parse(""), 80);
 
         stopwatch.Stop();
 
-        Console.WriteLine(result.serverHeader);
+        Console.WriteLine(serverHeader);
 
         Console.WriteLine(stopwatch.ElapsedMilliseconds);
     }

@@ -19,6 +19,8 @@ public class SsdpProbe
             }
         }
 
-        return ssdpDevices;
+        return ssdpDevices
+            .DistinctBy(device => device.Uuid)
+            .ToList();
     }
 }
