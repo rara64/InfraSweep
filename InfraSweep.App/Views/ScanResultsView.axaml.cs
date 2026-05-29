@@ -1,11 +1,11 @@
+using System;
 using Avalonia.Controls;
-using InfraSweep.App.ViewModels;
 
 namespace InfraSweep.App.Views;
 
-public partial class MainWindow : Window
+public partial class ScanResultsView : UserControl
 {
-    public MainWindow()
+    public ScanResultsView()
     {
         InitializeComponent();
     }
