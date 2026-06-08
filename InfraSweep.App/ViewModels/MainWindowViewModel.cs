@@ -1,7 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.Input;
 using System;
 using System.Threading;
-using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using InfraSweep.App.Models;
@@ -11,7 +10,6 @@ using InfraSweep.Discovery.Exceptions;
 using InfraSweep.Analysis.Exceptions;
 using System.Net.Http;
 using InfraSweep.App.Helpers;
-using System.Net.Sockets;
 
 namespace InfraSweep.App.ViewModels;
 
@@ -43,7 +41,6 @@ public partial class MainWindowViewModel : ViewModelBase
     private bool _isCancelButtonEnabled = true;
 
     public bool IsSilentStart {get; set;} = false;
-    public ObservableCollection<HostScanResult> HostScanResults { get; } = [];
     public ScanResultsViewModel ScanResultsView { get; }
     public SettingsViewModel SettingsView { get; }
 
@@ -71,7 +68,6 @@ public partial class MainWindowViewModel : ViewModelBase
         SelectedTab = 0;
         ScanProgress = 0;
         IsCancelButtonEnabled = true;
-        HostScanResults.Clear();
 
         try
         {
