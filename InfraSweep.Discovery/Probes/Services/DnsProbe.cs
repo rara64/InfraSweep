@@ -97,7 +97,7 @@ public class DnsProbe
 
     private readonly static ResiliencePipeline<byte[]?> RetryPipeline = 
         new ResiliencePipelineBuilder<byte[]?>()
-            .AddRetry(new RetryStrategyOptions<byte[]?>()
+            .AddRetry(new RetryStrategyOptions<byte[]?>
             {
                 ShouldHandle = new PredicateBuilder<byte[]?>()
                     .Handle<SocketException>()
@@ -110,7 +110,7 @@ public class DnsProbe
                 Delay = TimeSpan.FromMilliseconds(500),
                 BackoffType = DelayBackoffType.Linear,
             })
-            .AddFallback(new FallbackStrategyOptions<byte[]?>()
+            .AddFallback(new FallbackStrategyOptions<byte[]?>
             {
                 ShouldHandle = new PredicateBuilder<byte[]?>()
                     .Handle<SocketException>()

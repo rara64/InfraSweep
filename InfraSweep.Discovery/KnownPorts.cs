@@ -2,6 +2,7 @@ namespace InfraSweep.Discovery;
 
 public class KnownPorts
 {
+    // https://github.com/danielmiessler/SecLists/blob/master/Discovery/Infrastructure/nmap-ports-top1000.txt
     public static readonly int[] Top1000 =
     [
         1,

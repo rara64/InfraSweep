@@ -1,0 +1,4 @@
+dotnet publish ./InfraSweep.App/InfraSweep.App.csproj -c Release -r linux-x64 -f net10.0 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none -p:EnableCompressionInSingleFile=true -o ./publish/linux-x64
+dotnet publish ./InfraSweep.App/InfraSweep.App.csproj -c Release -r osx-x64 -f net10.0 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none -p:EnableCompressionInSingleFile=true -o ./publish/osx-x64
+dotnet publish ./InfraSweep.App/InfraSweep.App.csproj -c Release -r win-x64 -f net10.0-windows10.0.19041.0 -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=none -p:EnableCompressionInSingleFile=true -o ./publish/win-x64
+del /q /s "publish\win-x64\*.pdb"

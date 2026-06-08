@@ -27,6 +27,10 @@ public partial class Common
         using var stream = assembly.GetManifestResourceStream(
             "InfraSweep.Analysis.Resources.iana-ports.csv"
         );
+
+        if (stream == null)
+            return portAssignments;
+
         using var reader = new StreamReader(stream);
 
         using var parser = new TextFieldParser(reader);
@@ -37,7 +41,7 @@ public partial class Common
         parser.ReadLine();
 
         while (!parser.EndOfData) {
-            string[] columns = parser.ReadFields();
+            string[] columns = parser.ReadFields() ?? [];
 
             if (columns.Length < 4)
                 continue;

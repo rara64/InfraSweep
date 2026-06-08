@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Sockets;
 using System.Text.RegularExpressions;
 using Polly;
 using Polly.Fallback;
@@ -79,11 +80,12 @@ public class HttpProbe
 
     private readonly static ResiliencePipeline<HttpResponseMessage?> RetryPipeline = 
         new ResiliencePipelineBuilder<HttpResponseMessage?>()
-            .AddRetry(new RetryStrategyOptions<HttpResponseMessage?>()
+            .AddRetry(new RetryStrategyOptions<HttpResponseMessage?>
             {
                 ShouldHandle = new PredicateBuilder<HttpResponseMessage?>()
                     .Handle<HttpRequestException>()
                     .Handle<HttpIOException>()
+                    .Handle<SocketException>()
                     .HandleResult(result => result == null),
 
                 MaxRetryAttempts = 1,
@@ -91,11 +93,12 @@ public class HttpProbe
                 Delay = TimeSpan.FromMilliseconds(500),
                 BackoffType = DelayBackoffType.Linear,
             })
-            .AddFallback(new FallbackStrategyOptions<HttpResponseMessage?>()
+            .AddFallback(new FallbackStrategyOptions<HttpResponseMessage?>
             {
                 ShouldHandle = new PredicateBuilder<HttpResponseMessage?>()
                     .Handle<HttpRequestException>()
-                    .Handle<HttpIOException>(),
+                    .Handle<HttpIOException>()
+                    .Handle<SocketException>(),
                 FallbackAction = _ => Outcome.FromResultAsValueTask<HttpResponseMessage?>(null)
             })
             .Build();

@@ -3,7 +3,6 @@ using System.Net.Sockets;
 using Polly;
 using Polly.Retry;
 using Polly.Fallback;
-using System.Reflection;
 
 namespace InfraSweep.Discovery.Probes.Services;
 
@@ -34,7 +33,7 @@ public class SshProbe
 
     private readonly static ResiliencePipeline<string?> RetryPipeline = 
         new ResiliencePipelineBuilder<string?>()
-            .AddRetry(new RetryStrategyOptions<string?>()
+            .AddRetry(new RetryStrategyOptions<string?>
             {
                 ShouldHandle = new PredicateBuilder<string?>()
                     .Handle<SocketException>()
@@ -47,7 +46,7 @@ public class SshProbe
                 Delay = TimeSpan.FromMilliseconds(500),
                 BackoffType = DelayBackoffType.Linear,
             })
-            .AddFallback(new FallbackStrategyOptions<string?>()
+            .AddFallback(new FallbackStrategyOptions<string?>
             {
                 ShouldHandle = new PredicateBuilder<string?>()
                     .Handle<SocketException>()

@@ -17,8 +17,7 @@ public class Api {
     private static readonly HttpClientHandler httpHandler = new()
     {
         AllowAutoRedirect = true,
-        ServerCertificateCustomValidationCallback = CertValidation.ServerCertificateValidation,
-        CheckCertificateRevocationList = false,
+        ServerCertificateCustomValidationCallback = CertValidation.ServerCertificateValidation
     };
     private static readonly HttpClient client = new Func<HttpClient>(() => {
         var builder = new HttpClient(httpHandler);
@@ -39,6 +38,8 @@ public class Api {
         using HttpResponseMessage response = await client.SendAsync(
             request,
             HttpCompletionOption.ResponseContentRead);
+
+        response.EnsureSuccessStatusCode();
 
         return await response.Content.ReadAsStringAsync();
     }
@@ -159,8 +160,6 @@ public class Api {
             .AddFallback(new FallbackStrategyOptions<object?>()
             {
                 ShouldHandle = new PredicateBuilder<object?>()
-                    .Handle<HttpRequestException>()
-                    .Handle<HttpIOException>()
                     .Handle<JsonException>(),
                 FallbackAction = _ => Outcome.FromResultAsValueTask<object?>(null)
             })

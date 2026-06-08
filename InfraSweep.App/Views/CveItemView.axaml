@@ -1,0 +1,54 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:InfraSweep.App.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+		xmlns:ic="using:FluentIcons.Avalonia"
+		xmlns:converters="using:InfraSweep.App.Converters"
+        xmlns:analysis="using:InfraSweep.Analysis"
+        xmlns:views="using:InfraSweep.App.Views"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="InfraSweep.App.Views.CveItemView"
+        x:DataType="analysis:CveSummary">
+
+	<UserControl.Resources>
+		<converters:CountToVisibilityConverter x:Key="CountToVisibilityConverter"/>
+		<converters:IssueCountToBrushConverter x:Key="IssueCountToBrushConverter" />
+		<converters:SeverityToBrushConverter x:Key="SeverityToBrushConverter" />
+	</UserControl.Resources>
+
+	<Border BorderThickness="1" Classes.highlighted="{Binding IsHighlighted}">
+	
+		<Border.Styles>
+			<Style Selector="Border.highlighted">
+				<Setter Property="BorderBrush" Value="{DynamicResource SystemErrorTextColor}"/>
+			</Style>
+		</Border.Styles>
+
+		<Expander Margin="0,2" Padding="8" HorizontalAlignment="Stretch" Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}">
+			<Expander.Header>
+				<Grid HorizontalAlignment="Stretch" ColumnDefinitions="Auto,*,Auto">
+					<StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4">
+						<Border CornerRadius="4" Padding="2" Margin="4" MinWidth="24"
+							Background="{Binding BaseSeverity, Converter={StaticResource SeverityToBrushConverter}}">
+							<Label Content="{Binding BaseSeverity}" Foreground="White" FontWeight="Bold" FontSize="12" VerticalAlignment="Center" />
+						</Border>
+						<Label Content="{Binding CveId}" FontWeight="Bold" VerticalAlignment="Center" FontSize="12"/>
+						<Label Content="{Binding DatePublished, StringFormat='{}{0:MMM d, yyyy}'}" Foreground="Gray" VerticalAlignment="Center" FontSize="12"/>
+					</StackPanel>
+
+					<views:CopyButton CopyText="{Binding CveId}" ToolTip.Tip="Copy" HorizontalAlignment="Right" Grid.Column="2" Height="32" Width="32">
+						<ic:SymbolIcon Symbol="Copy" FontSize="14" />
+					</views:CopyButton>
+				</Grid>
+			</Expander.Header>
+			<SelectableTextBlock Text="{Binding Description}" TextWrapping="Wrap" Margin="0,4,0,0" Opacity="0.7" FontSize="12" />
+		</Expander>
+	</Border>
+
+	<UserControl.Styles>
+		<Style Selector="views|CopyButton">
+			<Setter Property="Theme" Value="{StaticResource {x:Type Button}}"/>
+		</Style>
+	</UserControl.Styles>
+</UserControl>

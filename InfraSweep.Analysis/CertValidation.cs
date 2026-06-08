@@ -1,6 +1,7 @@
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Security.Cryptography;
+using InfraSweep.Analysis.Exceptions;
 
 namespace InfraSweep.Analysis;
 
@@ -8,8 +9,8 @@ public class CertValidation
 {
     private static readonly Dictionary<string, byte[]> PinnedCertificateAuthorities = new()
     {
-        {"vulnerability.circl.lu", Convert.FromHexString("981ceae14bc8103800db606f5bf9950586538674bb55b9bb61d3ee71ada20b1d")},
-        {"cpe-guesser.cve-search.org", Convert.FromHexString("2f713f274f44e7f7d9bddd8d0ad397ee4271f6cb5c651a5f1416537c9df5ef57")}
+        {"vulnerability.circl.lu", Convert.FromHexString("59e738e674221702af1edb87c5200c1a4b75f64fae3d2c3d265124c61bd83c79")},
+        {"cpe-guesser.cve-search.org", Convert.FromHexString("025490860b498ab73c6a12f27a49ad5fe230fafe3ac8f6112c9b7d0aad46941d")}
     };
 
     public static bool ServerCertificateValidation(
@@ -25,17 +26,34 @@ public class CertValidation
         {
 
             using X509Chain chain = certificateChain ?? new X509Chain();
-            chain.ChainPolicy.RevocationMode = X509RevocationMode.Online;
+            chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck; // Needed for macOS
             chain.ChainPolicy.UrlRetrievalTimeout = TimeSpan.FromSeconds(5);
 
+            string certDnsName = certificate.GetNameInfo(X509NameType.DnsName, false);
+
+            if (!IsDnsMatch(certDnsName, request.RequestUri.Host))
+                throw new CertPinException();
+
             if (!chain.Build(certificate))
-                return false;
+                throw new CertPinException();
 
-            byte[] subjectPublicKeyInfo = certificate.PublicKey.ExportSubjectPublicKeyInfo();
+            foreach (X509ChainElement element in chain.ChainElements)
+            {
+                byte[] publicKey = element.Certificate.PublicKey.ExportSubjectPublicKeyInfo();
+                byte[] hash = SHA256.HashData(publicKey);
 
-            return SHA256.HashData(subjectPublicKeyInfo).SequenceEqual(pin);
+                if (hash.SequenceEqual(pin))
+                    return true;
+            }
         }
 
+        throw new CertPinException();
+    }
+
+    private static bool IsDnsMatch(string certDns, string host)
+    {
+        if (certDns.Equals(host, StringComparison.OrdinalIgnoreCase)) return true;
+        if (certDns.StartsWith("*.") && host.EndsWith(certDns[1..], StringComparison.OrdinalIgnoreCase)) return true;
         return false;
     }
 }

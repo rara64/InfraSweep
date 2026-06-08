@@ -7,8 +7,10 @@ namespace InfraSweep.Analysis;
 public class AnalyzedHost
 {
     public required string Address {get; set;}
+    public required string MacAddress { get; set; }
     public string? HostCpe {get; set;}
     public List<AnalyzedServiceInfo> Services {get; set;} = [];
+    public string? FriendlyName {get; set;}
 }
 
 public class AnalyzedServiceInfo
@@ -26,38 +28,67 @@ public class IdentifiedSoftware
     public List<string>? MatchedCpes {get; set;}
 }
 
+public class NetworkAnalysisResult
+{
+    public required string DisplayName {get; set;}
+    public List<AnalyzedHost> Hosts {get; set;} = [];
+}
+
 public class NetworkAnalysis
 {
-    public static async Task<List<AnalyzedHost>> AnalyzeDiscoveredHosts(List<DiscoveredHost> scanResults, CancellationToken cancellationToken = default, Action<int>? progressCallback = null)
+    public static async Task<List<NetworkAnalysisResult>> AnalyzeDiscoveredNetworks(List<NetworkDiscoveryResult> scanResults, Action<int>? progressCallback = null, CancellationToken cancellationToken = default)
     {
-        List<AnalyzedHost> results = [];
+        List<NetworkAnalysisResult> results = [];
 
-        if (scanResults.Count == 0)
+        int totalHosts = scanResults.Sum(network => network.Hosts.Count);
+
+        if (scanResults.Count == 0 || totalHosts == 0)
             progressCallback?.Invoke(100);
 
         int currentItem = 0;
 
-        foreach (DiscoveredHost result in scanResults)
+        foreach (NetworkDiscoveryResult network in scanResults)
         {
-            if (cancellationToken.IsCancellationRequested)
-                break;
+            List<AnalyzedHost> hosts = [];
 
-            string? hostCpe = await GetHostCpeFromDeviceDetails(result, cancellationToken);
-
-            if (result.HostedServices == null)
-                continue;
-
-            List<AnalyzedServiceInfo> identifiedServices = 
-                await AnalyzeServiceInfos(result.HostedServices, cancellationToken);
-
-            currentItem++;
-            progressCallback?.Invoke(currentItem / scanResults.Count);
-
-            results.Add(new AnalyzedHost()
+            foreach (DiscoveredHost result in network.Hosts)
             {
-                Address = result.Address,
-                HostCpe = hostCpe,
-                Services = identifiedServices
+                if (cancellationToken.IsCancellationRequested)
+                    break;
+
+                string? hostCpe = await GetHostCpeFromDeviceDetails(result, cancellationToken);
+
+                if (result.HostedServices == null)
+                {
+                    currentItem++;
+                    progressCallback?.Invoke(currentItem * 100 / totalHosts);
+                    continue;
+                }
+
+                List<AnalyzedServiceInfo> identifiedServices = 
+                    await AnalyzeServiceInfos(result.HostedServices, cancellationToken);
+
+                currentItem++;
+                progressCallback?.Invoke(currentItem * 100 / totalHosts);
+
+                hosts.Add(new AnalyzedHost()
+                {
+                    Address = result.Address,
+                    MacAddress = result.MacAddress,
+                    HostCpe = hostCpe,
+                    Services = identifiedServices,
+                    FriendlyName = !string.IsNullOrEmpty(result.DisplayName) ? result.DisplayName :
+                        !string.IsNullOrEmpty(result.ModelName) ? result.ModelName :
+                        !string.IsNullOrEmpty(result.ModelDescription) ? result.ModelDescription :
+                        !string.IsNullOrEmpty(result.Manufacturer) ? result.Manufacturer :
+                        null,
+                });
+            }
+
+            results.Add(new NetworkAnalysisResult()
+            {
+                DisplayName = network.DisplayName,
+                Hosts = hosts
             });
         }
 

@@ -6,6 +6,7 @@
 		xmlns:ic="using:FluentIcons.Avalonia"
 		xmlns:converters="using:InfraSweep.App.Converters"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+		xmlns:views="using:InfraSweep.App.Views"
         x:Class="InfraSweep.App.Views.ScanResultsView"
         x:DataType="vm:ScanResultsViewModel">
 
@@ -16,138 +17,88 @@
 	</UserControl.Resources>
 
 	<Grid Margin="8">
-		<StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" IsVisible="{Binding !HasResults}">
-			<Label Content="{Binding Locale[NoScanData]}" FontSize="16"/>
-			<TextBlock Text="Start a scan to view discovered hosts, services, and security issues." FontSize="12" Opacity="0.8" TextAlignment="Center" Margin="0,8,0,0"/>
+		<StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" IsVisible="{Binding !LatestResult.Metadata.HasResults, FallbackValue=True}">
+			<ic:FluentIcon Icon="CollectionsEmpty" FontSize="48" />
+			<TextBlock Text="{DynamicResource NoScanData}" FontSize="24" TextAlignment="Center" />
 		</StackPanel>
-		<ScrollViewer IsVisible="{Binding HasResults}" Margin="0,8,0,0">
-			<Grid RowDefinitions="Auto,Auto,*" VerticalAlignment="Top">
-				<TextBlock Text="Scan summary" FontSize="18" FontWeight="Bold" Grid.Row="0" Margin="0,0,0,8"/>
+		<ScrollViewer IsVisible="{Binding LatestResult.Metadata.HasResults, FallbackValue=False}" Margin="0,8,0,0">
+			<Grid RowDefinitions="Auto,Auto,Auto,Auto,*" VerticalAlignment="Top">
+				<TextBlock Text="{DynamicResource ScanResultsSummaryLabel}" FontSize="16" Grid.Row="0" Margin="0,0,0,8" />
 				<Grid Grid.Row="1" HorizontalAlignment="Stretch" Margin="0,0,8,0" ColumnDefinitions="*,*,*,*">
 					<Border CornerRadius="4" HorizontalAlignment="Stretch" Height="120" Margin="0,0,8,0" Background="{DynamicResource SystemControlBackgroundAltLowBrush}" BorderBrush="{DynamicResource SystemAccentColorDark1}" BorderThickness="2" Grid.Column="0">
 						<StackPanel VerticalAlignment="Center">
 							<ic:FluentIcon Icon="Desktop" />
-							<Label Content="{Binding Locale[ScanResultsHostCountLabel]}" HorizontalAlignment="Center" FontWeight="Bold" FontSize="12"/>
-							<Label Content="{Binding HostCount}" HorizontalAlignment="Center" FontSize="16"/>
+							<Label Content="{DynamicResource ScanResultsHostCountLabel}" HorizontalAlignment="Center" FontWeight="Bold" FontSize="12"/>
+							<Label Content="{Binding LatestResult.Metadata.HostCount}" HorizontalAlignment="Center" FontSize="16"/>
 						</StackPanel>
 					</Border>
 					<Border CornerRadius="4" HorizontalAlignment="Stretch" Height="120" Margin="0,0,8,0" Background="{DynamicResource SystemControlBackgroundAltLowBrush}" BorderBrush="{DynamicResource SystemAccentColorDark1}" BorderThickness="2" Grid.Column="1">
 						<StackPanel VerticalAlignment="Center">
 							<ic:FluentIcon Icon="PlugConnected" />
-							<Label Content="{Binding Locale[ScanResultsServiceCountLabel]}" HorizontalAlignment="Center" FontWeight="Bold" FontSize="12"/>
-							<Label Content="{Binding ServiceCount}" HorizontalAlignment="Center" FontSize="16"/>
+							<Label Content="{DynamicResource ScanResultsServiceCountLabel}" HorizontalAlignment="Center" FontWeight="Bold" FontSize="12"/>
+							<Label Content="{Binding LatestResult.Metadata.ServiceCount}" HorizontalAlignment="Center" FontSize="16"/>
 						</StackPanel>
 					</Border>
 					<Border CornerRadius="4" HorizontalAlignment="Stretch" Height="120" Margin="0,0,8,0" Background="{DynamicResource SystemControlBackgroundAltLowBrush}" BorderBrush="#C62828" BorderThickness="2" Grid.Column="2">
 						<StackPanel VerticalAlignment="Center">
 							<ic:FluentIcon Icon="Warning" />
-							<Label Content="{Binding Locale[ScanResultsVulnerabilityCountLabel]}" HorizontalAlignment="Center" FontWeight="Bold" FontSize="12"/>
-							<Label Content="{Binding VulnerabilityCount}" HorizontalAlignment="Center" FontSize="16"/>
+							<Label Content="{DynamicResource ScanResultsVulnerabilityCountLabel}" HorizontalAlignment="Center" FontWeight="Bold" FontSize="12"/>
+							<Label Content="{Binding LatestResult.Metadata.VulnerabilityCount}" HorizontalAlignment="Center" FontSize="16"/>
 						</StackPanel>
 					</Border>
 					<Border CornerRadius="4" HorizontalAlignment="Stretch" Height="120" Background="{DynamicResource SystemControlBackgroundAltLowBrush}" BorderBrush="#FFA726" BorderThickness="2" Grid.Column="3">
 						<StackPanel VerticalAlignment="Center">
 							<ic:FluentIcon Icon="Calendar" />
-							<Label Content="{Binding Locale[ScanResultsCurrentYearVulnerabilityCountLabel]}" HorizontalAlignment="Center" FontWeight="Bold" FontSize="12"/>
-							<Label Content="{Binding CurrentYearVulnerabilityCount}" HorizontalAlignment="Center" FontSize="16"/>
+							<Label Content="{DynamicResource ScanResultsCurrentYearVulnerabilityCountLabel}" HorizontalAlignment="Center" FontWeight="Bold" FontSize="12"/>
+							<Label Content="{Binding LatestResult.Metadata.CurrentYearVulnerabilityCount}" HorizontalAlignment="Center" FontSize="16"/>
 						</StackPanel>
 					</Border>
 				</Grid>
-				<ItemsControl ItemsSource="{Binding LatestResult.Hosts}" Grid.Row="2">
+				<Separator Grid.Row="2" Margin="0,16,8,8" />
+				<Grid ColumnDefinitions="Auto,*" Grid.Row="3" Margin="0,8,8,0">
+
+					<StackPanel Grid.Column="0" Spacing="4">
+						<TextBlock Text="{DynamicResource ScanResultsDetailsLabel}" FontSize="16"  VerticalAlignment="Top" />
+
+						<TextBlock FontSize="11" Foreground="Gray">
+							<TextBlock.Text>
+								<MultiBinding StringFormat="({0} {1:g})">
+									<Binding Source="{StaticResource ScanFromLabel}"/>
+									<Binding Path="LatestResult.TimeOfScan"/>
+								</MultiBinding>
+							</TextBlock.Text>
+						</TextBlock>
+					</StackPanel>
+					
+					<Button Command="{Binding GenerateReport}" Content="" Grid.Column="1" HorizontalAlignment="Right" Padding="8" VerticalAlignment="Top">
+						<StackPanel Orientation="Horizontal" Spacing="2">
+							<ic:FluentIcon Icon="DocumentPdf" />
+							<TextBlock Text="{DynamicResource ExportToPdfButton}" FontSize="16" VerticalAlignment="Center" />
+						</StackPanel>
+					</Button>
+				</Grid>
+				<ItemsControl ItemsSource="{Binding LatestResult.Networks}" Grid.Row="4">
 					<ItemsControl.ItemTemplate>
 						<DataTemplate>
-							<Expander HorizontalAlignment="Stretch" IsExpanded="{Binding FoundSoftware, Converter={StaticResource CountToVisibilityConverter}}">
-								<Expander.Header>
-									<Grid ColumnDefinitions="*,Auto">
-										<StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-											<ic:FluentIcon Icon="Desktop" VerticalAlignment="Center"/>
-											<Label Content="{Binding Host.Address}" FontWeight="Bold" VerticalAlignment="Center"/>
-											<Label Content="{Binding Host.HostCpe}" FontSize="11" Foreground="Gray" VerticalAlignment="Center"
-												IsVisible="{Binding Host.HostCpe, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-										</StackPanel>
-										<StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-											<Label VerticalAlignment="Center" FontSize="12">
-												<Label.Content>
-													<MultiBinding StringFormat="{}{0} {1}">
-														<Binding Path="FoundSoftware.Count"/>
-														<Binding Path="((vm:ScanResultsViewModel)DataContext).Locale[ScanResultsServicesRunning]" RelativeSource="{RelativeSource AncestorType=UserControl}"/>
-													</MultiBinding>
-												</Label.Content>
-											</Label>
-											<Border CornerRadius="10" Padding="8,2" VerticalAlignment="Center"
-												Background="{Binding TotalCveCount, Converter={StaticResource IssueCountToBrushConverter}}">
-												<Label Content="{Binding TotalCveCount}" Foreground="White" FontWeight="Bold" FontSize="12" Margin="0"/>
-											</Border>
-										</StackPanel>
-									</Grid>
-								</Expander.Header>
+							<Grid RowDefinitions="*,*">
+								<Border Grid.Row="0" Margin="0,16,8,0" BorderThickness="2"
+									BorderBrush="{DynamicResource ExpanderHeaderBorderBrush}"
+									Background="{DynamicResource SystemChromeLowColor}" CornerRadius="4" Padding="8">
+									<StackPanel Orientation="Horizontal" Spacing="4" Margin="16,0">
+										<ic:FluentIcon Icon="Globe" VerticalAlignment="Center" Margin="0,0,8,0" />
+										<TextBlock Text="{DynamicResource ScanResultsNetworkLabel}" VerticalAlignment="Center"/>
+										<TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center" />
+									</StackPanel>
+								</Border>
 
-								<StackPanel>
-									<ItemsControl ItemsSource="{Binding HostVulnerabilities.Cves}">
-										<ItemsControl.ItemTemplate>
-											<DataTemplate>
-												<Border Margin="0,4" Padding="10" CornerRadius="4" Background="{DynamicResource SystemControlBackgroundAltLowBrush}">
-													<StackPanel>
-														<StackPanel Orientation="Horizontal" Spacing="8">
-															<Border CornerRadius="4" Padding="6,2"
-																Background="{Binding BaseSeverity, Converter={StaticResource SeverityToBrushConverter}}">
-																<Label Content="{Binding BaseSeverity}" Foreground="White" FontWeight="Bold" FontSize="11" Margin="0"/>
-															</Border>
-															<Label Content="{Binding CveId}" FontWeight="Bold" VerticalAlignment="Center"/>
-															<Label Content="{Binding DatePublished, StringFormat='{}{0:MMM d, yyyy}'}" Foreground="Gray" VerticalAlignment="Center"/>
-														</StackPanel>
-														<TextBlock Text="{Binding Description}" TextWrapping="Wrap" Margin="0,6,0,0" Opacity="0.85"/>
-													</StackPanel>
-												</Border>
-											</DataTemplate>
-										</ItemsControl.ItemTemplate>
-									</ItemsControl>
-									<ItemsControl ItemsSource="{Binding FoundSoftware}">
-										<ItemsControl.ItemTemplate>
-											<DataTemplate>
-												<Expander HorizontalAlignment="Stretch" Margin="0,4">
-													<Expander.Header>
-														<StackPanel>
-															<StackPanel Orientation="Horizontal" Spacing="6">
-																<Label Content="{Binding Software.Name}" FontWeight="SemiBold"/>
-																<Label Content="{Binding Software.Version}" VerticalAlignment="Center"/>
-															</StackPanel>
-															<Label FontSize="11" Foreground="Gray" Margin="0,-4,0,0">
-																<Label.Content>
-																	<MultiBinding StringFormat="{}{0} {1}">
-																		<Binding Path="((vm:ScanResultsViewModel)DataContext).Locale[ScanResultsOnPort]" RelativeSource="{RelativeSource AncestorType=UserControl}"/>
-																		<Binding Path="Port"/>
-																	</MultiBinding>
-																</Label.Content>
-															</Label>
-														</StackPanel>
-													</Expander.Header>
-
-													<ItemsControl ItemsSource="{Binding Vulnerabilities.Cves}" Margin="16,4,0,4">
-														<ItemsControl.ItemTemplate>
-															<DataTemplate>
-																<Border Margin="0,4" Padding="10" CornerRadius="4" Background="{DynamicResource SystemControlBackgroundAltLowBrush}">
-																	<StackPanel>
-																		<StackPanel Orientation="Horizontal" Spacing="8">
-																			<Border CornerRadius="4" Padding="6,2"
-																				Background="{Binding BaseSeverity, Converter={StaticResource SeverityToBrushConverter}}">
-																				<Label Content="{Binding BaseSeverity}" Foreground="White" FontWeight="Bold" FontSize="11" Margin="0"/>
-																			</Border>
-																			<Label Content="{Binding CveId}" FontWeight="Bold" VerticalAlignment="Center"/>
-																			<Label Content="{Binding DatePublished, StringFormat='{}{0:MMM d, yyyy}'}" Foreground="Gray" VerticalAlignment="Center"/>
- 																		</StackPanel>
-																		<TextBlock Text="{Binding Description}" TextWrapping="Wrap" Margin="0,6,0,0" Opacity="0.85"/>
-																	</StackPanel>
-																</Border>
-															</DataTemplate>
-														</ItemsControl.ItemTemplate>
-													</ItemsControl>
-												</Expander>
-											</DataTemplate>
-										</ItemsControl.ItemTemplate>
-									</ItemsControl>
-								</StackPanel>
-							</Expander>
+								<ItemsControl ItemsSource="{Binding Hosts}" Grid.Row="1">
+									<ItemsControl.ItemTemplate>
+										<DataTemplate>
+											<views:HostItemView />
+										</DataTemplate>
+									</ItemsControl.ItemTemplate>
+								</ItemsControl>
+							</Grid>
 						</DataTemplate>
 					</ItemsControl.ItemTemplate>
 				</ItemsControl>

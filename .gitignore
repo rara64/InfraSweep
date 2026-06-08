@@ -4,3 +4,5 @@
 *.vscode/
 *.vs/
 *.json
+publish/
+InfraSweep.Tests/

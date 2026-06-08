@@ -1,10 +1,11 @@
+using System;
 using Avalonia.Controls;
 
 namespace InfraSweep.App.Views;
 
-public partial class SettingsView : UserControl
+public partial class CveItemView : UserControl
 {
-    public SettingsView()
+    public CveItemView()
     {
         InitializeComponent();
     }

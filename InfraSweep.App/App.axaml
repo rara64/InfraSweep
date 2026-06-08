@@ -2,8 +2,29 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="InfraSweep.App.App"
              xmlns:local="using:InfraSweep.App"
+             xmlns:vm="using:InfraSweep.App.ViewModels"
              RequestedThemeVariant="Default">
              <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+
+    <TrayIcon.Icons>
+        <TrayIcons>
+            <TrayIcon 
+                Icon="/Assets/avalonia-logo.ico"
+                ToolTipText="InfraSweep"
+                Clicked="HandleTrayIconClick">
+                <TrayIcon.Menu>
+                    <NativeMenu>
+                        <NativeMenuItem
+                            Header="{DynamicResource OpenAppMenuItem}"
+                            Click="HandleTrayIconClick"/>
+                        <NativeMenuItem 
+                            Header="{DynamicResource ExitMenuItem}" 
+                            Click="HandleNativeMenuExitClick"/>
+                    </NativeMenu>
+                </TrayIcon.Menu>
+            </TrayIcon>
+        </TrayIcons>
+    </TrayIcon.Icons>
 
     <Application.DataTemplates>
         <local:ViewLocator/>

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace InfraSweep.Analysis;
@@ -49,56 +50,62 @@ public class CpeGuesser
         return null;
     }
 
-    private static bool CheckCpeRelevance(string cpe, string[] tokens)
+    private static (string cpe, double ratio)? RateCpeRelevance(string cpe, string[] queryTokens)
     {
-        if (tokens.Length == 0)
-            return false;
+        if (queryTokens.Length == 0)
+            return null;
 
         string[] cpeSplit = cpe.Split(":");
 
         if (cpeSplit.Length < 5)
-            return false;
+            return null;
+
+        string cpeProductName = cpeSplit[4];
+        string cpeVendorName = cpeSplit[3];
         
-        string product = cpeSplit[4];
+        string[] productTokens = cpeProductName
+            .Split(['_', '-', '.'], StringSplitOptions.RemoveEmptyEntries);
 
-        string[] productSegments = [.. product
-            .Split('_', '-', '.')
-            .Where(s => !string.IsNullOrWhiteSpace(s))];
+        if (productTokens.Length == 0)
+            return null;
 
-        int matchedSegments = productSegments.Count(seg =>
-            tokens.Any(t => 
-                seg.Equals(t, StringComparison.OrdinalIgnoreCase) ||
-                seg.StartsWith(t, StringComparison.OrdinalIgnoreCase)));
+        int matchedProductTokens = productTokens.Count(pt =>
+            queryTokens.Any(qt => pt.StartsWith(qt, StringComparison.OrdinalIgnoreCase)));
 
-        return ((double)matchedSegments / productSegments.Length) >= 0.5;
+        // Discard product names that have too much additional tokens
+
+        if (((double)matchedProductTokens / productTokens.Length) < 0.5)
+            return null;
+
+        // Rate cpe based on query token match count
+
+        string cpeInfo = $"{cpeProductName} {cpeVendorName}";
+
+        double ratio = (double)queryTokens.Count(qt => 
+            cpeInfo.Contains(qt, StringComparison.OrdinalIgnoreCase)) / queryTokens.Length;
+
+        if (ratio < 0.7)
+            return null;
+
+        // Promote when any query token fully matches product
+
+        if (queryTokens.Any(qt => cpeProductName.Equals(qt, StringComparison.OrdinalIgnoreCase)))
+        {
+            ratio = 1.1;   
+        }
+
+        return (cpe, ratio);
     }
 
     private static string? GetBestCpeFromResponse(string? response, string[] tokens)
     {
-        if (response == null)
+        if (string.IsNullOrWhiteSpace(response) || tokens.Length == 0)
             return null;
         
         return ParseCpes(response)
-            .Where(cpe => CheckCpeRelevance(cpe, tokens))
-            .Select(match =>
-            {
-                string[] parts =  match.Split(":");
-                string product = parts.Length > 4 ? parts[4] : "";
-
-                int matchCount = tokens
-                    .Count(t => match.Contains(t, StringComparison.OrdinalIgnoreCase));
-                
-                double matchRatio = (double)matchCount / tokens.Length;
-
-                bool exactProductMatch = tokens
-                    .Any(t => product.Equals(t, StringComparison.OrdinalIgnoreCase));
-
-                return (value: match, count: matchCount, ratio: matchRatio, exactProductMatch);
-            })
-            .Where(x => x.ratio >= 0.7)
-            .OrderByDescending(x => x.exactProductMatch)
-            .ThenByDescending(x => x.count)
-            .ThenByDescending(x => x.ratio)
-            .FirstOrDefault().value;
+            .Select(cpe => RateCpeRelevance(cpe, tokens))
+            .Where(ratedCpe => ratedCpe.HasValue)
+            .MaxBy(ratedCpe => ratedCpe!.Value.ratio)?
+            .cpe;
     }
 }

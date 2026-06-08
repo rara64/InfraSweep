@@ -1,8 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <OutputType Condition="'$(Configuration)' != 'Debug'">Exe</OutputType>
-    <OutputType Condition="'$(Configuration)' == 'Debug'">WinExe</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
+    <OutputType Condition="'$(RuntimeIdentifier)' == 'win-x64'">WinExe</OutputType>
+    <OutputType Condition="'$(RuntimeIdentifier)' != 'win-x64'">Exe</OutputType>
+    <TargetFramework Condition="'$(RuntimeIdentifier)' == 'win-x64'">net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetFramework Condition="'$(RuntimeIdentifier)' != 'win-x64'">net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
@@ -11,6 +12,7 @@
   <ItemGroup>
     <Folder Include="Models\" />
     <AvaloniaResource Include="Assets\**" />
+    <AvaloniaResource Include="Resources\**" />
   </ItemGroup>
 
   <ItemGroup>
@@ -24,6 +26,8 @@
     </PackageReference>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.1" />
     <PackageReference Include="FluentIcons.Avalonia" Version="2.1.328" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.8" />
+    <PackageReference Include="PDFsharp" Version="6.2.4" />
   </ItemGroup>
 
   <ItemGroup>

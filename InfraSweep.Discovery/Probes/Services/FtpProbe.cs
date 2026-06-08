@@ -50,7 +50,7 @@ public class FtpProbe
 
     private readonly static ResiliencePipeline<string?> RetryPipeline = 
         new ResiliencePipelineBuilder<string?>()
-            .AddRetry(new RetryStrategyOptions<string?>()
+            .AddRetry(new RetryStrategyOptions<string?>
             {
                 ShouldHandle = new PredicateBuilder<string?>()
                     .Handle<SocketException>()
@@ -63,7 +63,7 @@ public class FtpProbe
                 Delay = TimeSpan.FromMilliseconds(500),
                 BackoffType = DelayBackoffType.Linear,
             })
-            .AddFallback(new FallbackStrategyOptions<string?>()
+            .AddFallback(new FallbackStrategyOptions<string?>
             {
                 ShouldHandle = new PredicateBuilder<string?>()
                     .Handle<SocketException>()

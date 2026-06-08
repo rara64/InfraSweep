@@ -4,6 +4,56 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        xmlns:ic="using:FluentIcons.Avalonia"
+        xmlns:converters="using:InfraSweep.App.Converters"
+        xmlns:views="using:InfraSweep.App.Views"
         x:Class="InfraSweep.App.Views.SettingsView"
         x:DataType="vm:SettingsViewModel">
+
+	<UserControl.Resources>
+		<converters:EnumToDisplayNameConverter x:Key="EnumToDisplayNameConverter"/>
+	</UserControl.Resources>
+
+	<ScrollViewer>
+		<StackPanel Spacing="8" Margin="8">
+			<CheckBox Command="{Binding AutoStartToggle}" IsChecked="{Binding AppSettings.IsAutoStartEnabled, Mode=TwoWay}" Content="{DynamicResource SettingsAutoStart}" />
+			<CheckBox IsChecked="{Binding AppSettings.IsHideToTrayEnabled, Mode=TwoWay}" Content="{DynamicResource SettingsHideToTray}" />
+			<CheckBox IsChecked="{Binding AppSettings.ShowCveOnlyForKnownVersions, Mode=TwoWay}" Content="{DynamicResource SettingsShowCveOnlyForKnownVersions}"/>
+
+			<Border CornerRadius="4" Padding="16" BorderThickness="1" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
+
+				<StackPanel Spacing="8">
+					<CheckBox Command="{Binding ScanSchedulerToggle}" IsChecked="{Binding AppSettings.IsScanSchedulerEnabled, Mode=TwoWay}" Content="{DynamicResource SettingsScanScheduler}" />
+					<StackPanel Spacing="8">
+						<TextBlock Text="{DynamicResource SettingsScheduleFrequency}" />
+						<ComboBox IsEnabled="{Binding AppSettings.IsScanSchedulerEnabled}" SelectedItem="{Binding AppSettings.ScheduleFrequency, Mode=TwoWay}" ItemsSource="{Binding AvailableScheduleFrequency}">
+							<ComboBox.ItemTemplate>
+								<DataTemplate>
+									<TextBlock Text="{Binding Converter={StaticResource EnumToDisplayNameConverter}}" />
+								</DataTemplate>
+							</ComboBox.ItemTemplate>
+						</ComboBox>
+					</StackPanel>
+
+					<StackPanel IsVisible="{Binding IsWeeklySchedule}" Spacing="8">
+						<TextBlock Text="{DynamicResource SettingsScheduleDayOfWeek}" />
+						<ComboBox IsEnabled="{Binding AppSettings.IsScanSchedulerEnabled}" SelectedItem="{Binding AppSettings.ScheduledDayOfWeek, Mode=TwoWay}" ItemsSource="{Binding AvailableDayOfWeek}">
+							<ComboBox.ItemTemplate>
+								<DataTemplate>
+									<TextBlock Text="{Binding Converter={StaticResource EnumToDisplayNameConverter}}" />
+								</DataTemplate>
+							</ComboBox.ItemTemplate>
+						</ComboBox>
+					</StackPanel>
+
+					<StackPanel Spacing="8">
+						<TextBlock Text="{DynamicResource SettingsScheduleScanStartTime}" />
+						<TimePicker IsEnabled="{Binding AppSettings.IsScanSchedulerEnabled}" SelectedTime="{Binding AppSettings.ScheduledTime, Mode=TwoWay}" />
+					</StackPanel>
+
+					<CheckBox IsChecked="{Binding AppSettings.CveOnlyNotifications, Mode=TwoWay}" Content="{DynamicResource SettingsCveOnlyNotifications}" IsEnabled="{Binding AppSettings.IsScanSchedulerEnabled}" />
+				</StackPanel>
+			</Border>
+		</StackPanel>
+	</ScrollViewer>
 </UserControl>

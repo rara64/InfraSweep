@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
-using System.Threading.RateLimiting;
+using InfraSweep.Discovery.Exceptions;
 using InfraSweep.Discovery.Probes.Network;
 using InfraSweep.Discovery.Probes.Services;
 
@@ -11,8 +11,8 @@ namespace InfraSweep.Discovery;
 public class DiscoveredHost
 {
     public required string Address { get; set; }
-    public string? MacAddress { get; set; }
-    public List<ServiceInfo>? HostedServices { get; set; } = [];
+    public required string MacAddress { get; set; }
+    public List<ServiceInfo> HostedServices { get; set; } = [];
     public string? DisplayName { get; set; }
     public string? Manufacturer { get; set; }
     public string? ModelName { get; set; }
@@ -25,20 +25,15 @@ public class ServiceInfo
     public string? Banner { get; set; }
 }
 
-public class NetworkScanner
+public class NetworkDiscoveryResult
 {
-    private static readonly TokenBucketRateLimiter RateLimiter = 
-        new(new TokenBucketRateLimiterOptions()
-        {
-            TokenLimit = 32,
-            TokensPerPeriod = 32,
-            ReplenishmentPeriod = TimeSpan.FromSeconds(1),
-            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-            QueueLimit = int.MaxValue,
-            AutoReplenishment = true
-        });
-        
-    public static async Task<List<DiscoveredHost>> DiscoverHosts(CancellationToken token = default, Action<int>? progressCallback = null)
+    public required string DisplayName { get; set; }
+    public List<DiscoveredHost> Hosts { get; set; } = [];
+}
+
+public class NetworkScanner
+{        
+    public static async Task<List<NetworkDiscoveryResult>> DiscoverNetworks(Action<int>? progressCallback = null, CancellationToken token = default)
     {
         var validUnicastAddresses = NetworkInterface.GetAllNetworkInterfaces()
             .Where(netInterface => netInterface.OperationalStatus == OperationalStatus.Up)
@@ -51,11 +46,11 @@ public class NetworkScanner
                 .Select(address => (netInterface: t.netInterface, addressInfo: address)))
             .ToList();
 
-        List<DiscoveredHost> results = [];
+        List<NetworkDiscoveryResult> results = [];
         int totalCount = validUnicastAddresses.Count;
 
         if (totalCount == 0)
-            progressCallback?.Invoke(100);
+            throw new NoIpV4NetworkException();
 
         int currentItem = 0;
         int lastProgress = 0;
@@ -82,60 +77,85 @@ public class NetworkScanner
                         .Distinct()
                         .ToArray());
 
-            var allIps = ipRange.GetEnumerable();
-            int currentIp = 0;
-            int totalIpCount = allIps.Count();
+            ConcurrentDictionary<IPAddress,PhysicalAddress> activeHosts = [];
 
             using SemaphoreSlim globalPortScanBudget = GetSemaphoreGlobalBudget(netInterface);
 
-            void UpdateProgress(int completedIps)
+            var allIps = ipRange.GetEnumerable().ToArray();
+            int totalIpCount = allIps.Length;
+
+            int arpCompleted = 0;
+            int hostCompleted = 0;
+
+            void UpdateProgress()
             {
-                double currentProgress = (currentItem + ((double)completedIps / totalIpCount)) / totalCount * 100;
+                double portProgress = (Volatile.Read(ref arpCompleted) == totalIpCount)
+                    ? (double)Volatile.Read(ref hostCompleted) / activeHosts.Count * 50
+                    : 0;
+
+                double arpProgress = (double)Volatile.Read(ref arpCompleted) / totalIpCount * 50;
+                
+                double currentProgress = (currentItem + (arpProgress + portProgress) / 100.0) / totalCount * 100;
 
                 int oldProgress = Volatile.Read(ref lastProgress);
 
                 if (oldProgress < (int)currentProgress)
-                    if (oldProgress == Interlocked.CompareExchange(ref lastProgress, oldProgress, (int)currentProgress))
+                    if (oldProgress == Interlocked.CompareExchange(ref lastProgress, (int)currentProgress, oldProgress))
                         progressCallback?.Invoke((int)currentProgress);
             }
 
-            await Parallel.ForEachAsync(allIps, new ParallelOptions { CancellationToken = token, MaxDegreeOfParallelism = 64 }, async (address, ct) =>
+            await Parallel.ForEachAsync(allIps, new ParallelOptions { CancellationToken = token, MaxDegreeOfParallelism = 16 }, async (address, ct) =>
             {
-                await RateLimiter.AcquireAsync(1, ct);
-
                 PhysicalAddress? physicalAddress = await ArpProbe.GetPhysicalAddress(address);
 
-                if (physicalAddress == null)
-                {
-                    UpdateProgress(Interlocked.Increment(ref currentIp));
-                    return;
-                }
+                if (physicalAddress != null)
+                    activeHosts.TryAdd(address, physicalAddress);
 
-                prediscoveredPorts.TryGetValue(address, out var ports);
-                List<ServiceInfo> serviceInfos = await GetOpenPortsAndCollectServiceInfo(address, globalPortScanBudget, ports, ct);
-
-                mdnsLookup.TryGetValue(address, out var mdnsDevice);
-                ssdpLookup.TryGetValue(address, out var ssdpDevice);
-                
-                networkHosts.Add(new DiscoveredHost()
-                    {
-                        Address = address.ToString(),
-                        MacAddress = physicalAddress?.ToString(),
-                        HostedServices = serviceInfos.ToList() ?? [],
-
-                        DisplayName =
-                            mdnsDevice?.DisplayName ??
-                            ssdpDevice?.DisplayName,
-
-                        Manufacturer = ssdpDevice?.Manufacturer,
-                        ModelName = ssdpDevice?.ModelName,
-                        ModelDescription = ssdpDevice?.ModelDescription
-                    });
-
-                UpdateProgress(Interlocked.Increment(ref currentIp));
+                Interlocked.Increment(ref arpCompleted);
+                UpdateProgress();
             });
 
-            results.AddRange(networkHosts);
+            await Parallel.ForEachAsync(activeHosts.Keys, new ParallelOptions { CancellationToken = token, MaxDegreeOfParallelism = 32 }, async (address, ct) =>
+            {
+                try
+                {
+                    if (!activeHosts.TryGetValue(address, out var physicalAddress))
+                        return;
+                    
+                    prediscoveredPorts.TryGetValue(address, out var ports);
+                    List<ServiceInfo> serviceInfos = await GetOpenPortsAndCollectServiceInfo(address, globalPortScanBudget, ports, ct);
+
+                    mdnsLookup.TryGetValue(address, out var mdnsDevice);
+                    ssdpLookup.TryGetValue(address, out var ssdpDevice);
+
+                    networkHosts.Add(new DiscoveredHost()
+                        {
+                            Address = address.ToString(),
+                            MacAddress = physicalAddress.ToString(),
+                            HostedServices = [.. serviceInfos],
+
+                            DisplayName =
+                                mdnsDevice?.DisplayName ??
+                                ssdpDevice?.DisplayName,
+
+                            Manufacturer = ssdpDevice?.Manufacturer,
+                            ModelName = ssdpDevice?.ModelName,
+                            ModelDescription = ssdpDevice?.ModelDescription
+                        });   
+                }
+                finally
+                {
+                    Interlocked.Increment(ref hostCompleted);
+                    UpdateProgress();
+                }
+            });
+
+            results.Add(new NetworkDiscoveryResult()
+            {
+                DisplayName = $"{addressInfo.Address}/{addressInfo.IPv4Mask} ({netInterface.Name})",
+                Hosts = [.. networkHosts]
+            });
+
             currentItem++;
         }
 
@@ -162,8 +182,6 @@ public class NetworkScanner
         int calculatedBudget = isWifi
             ? 256
             : Math.Min(speedLimit, cpuBudget);
-
-        Console.WriteLine(calculatedBudget);
 
         return new SemaphoreSlim(calculatedBudget);
     }

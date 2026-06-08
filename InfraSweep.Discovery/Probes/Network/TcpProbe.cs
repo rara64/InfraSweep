@@ -32,14 +32,15 @@ public class TcpProbe
         IPAddress address, 
         int port, 
         SemaphoreSlim? globalBudget = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        int timeoutSeconds = 20)
     {
         await (globalBudget?.WaitAsync(cancellationToken) ?? Task.CompletedTask);
 
         using TcpClient client = new();
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-        cts.CancelAfter(TimeSpan.FromSeconds(20));
+        cts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
 
         try
         {
@@ -88,6 +89,11 @@ public class TcpProbe
         catch (Exception e) when
             (e is OperationCanceledException
             or BrokenCircuitException)
+        {
+            results.Writer.TryComplete();
+        }
+        catch (SocketException e) when 
+            (e.SocketErrorCode == SocketError.HostUnreachable)
         {
             results.Writer.TryComplete();
         }
@@ -148,7 +154,7 @@ public class TcpProbe
 
         CreateWorkers();
 
-        await foreach (var (portState, port) in results.Reader.ReadAllAsync())
+        await foreach (var (portState, port) in results.Reader.ReadAllAsync(cancellationToken))
         {
             lock (state)
             {
@@ -174,7 +180,21 @@ public class TcpProbe
             CreateWorkers();
         }
 
-        Console.WriteLine(address.ToString() + " | " + dismissedPorts.Count + " | " + JsonSerializer.Serialize(dismissedPorts));
+        if (dismissedPorts.Count < 5)
+            foreach (int port in dismissedPorts)
+            {
+                try
+                {
+                    var result = await CheckPortState(address, port, globalBudget, cancellationToken, 2);
+                    if (result == PortState.Open)
+                        openPorts.Add(port);   
+                }
+                catch (SocketException e) when (e.SocketErrorCode == SocketError.HostUnreachable)
+                {
+                    return openPorts;
+                }
+            }
+
         return openPorts;
     }
 
@@ -190,7 +210,7 @@ public class TcpProbe
                 BreakDuration = TimeSpan.FromSeconds(30),
                 MinimumThroughput = 2
             })
-            .AddRetry(new RetryStrategyOptions<PortState>()
+            .AddRetry(new RetryStrategyOptions<PortState>
             {
                 ShouldHandle = new PredicateBuilder<PortState>()
                     .HandleResult(result => result == PortState.Throttled),

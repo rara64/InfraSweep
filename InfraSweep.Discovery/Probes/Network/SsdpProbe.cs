@@ -109,7 +109,7 @@ public class SsdpProbe
 
     private readonly static ResiliencePipeline<SsdpDevice?> RetryPipeline = 
         new ResiliencePipelineBuilder<SsdpDevice?>()
-            .AddRetry(new RetryStrategyOptions<SsdpDevice?>()
+            .AddRetry(new RetryStrategyOptions<SsdpDevice?>
             {
                 ShouldHandle = new PredicateBuilder<SsdpDevice?>()
                     .Handle<Exception>()
@@ -119,7 +119,7 @@ public class SsdpProbe
                 Delay = TimeSpan.FromMilliseconds(500),
                 BackoffType = DelayBackoffType.Linear,
             })
-            .AddFallback(new FallbackStrategyOptions<SsdpDevice?>()
+            .AddFallback(new FallbackStrategyOptions<SsdpDevice?>
             {
                 ShouldHandle = new PredicateBuilder<SsdpDevice?>()
                     .Handle<Exception>()
